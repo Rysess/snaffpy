@@ -32,10 +32,10 @@ Scan a subnet with pass-the-hash, name and extension rules only:
 snaffpy -d corp.local -u svc_scan --hashes :aad3b435...31d6 --cidr 10.0.20.0/24 --no-content
 ```
 
-Kerberos:
+Kerberos (the KDC wants a name for SPNs, so point `--dc-host` at the DC's FQDN):
 
 ```
-snaffpy -d corp.local -u svc_scan -k --kdcHost 10.0.0.10 --cidr 10.0.20.0/24
+snaffpy -d corp.local -u svc_scan -k --dc-host dc01.corp.local --cidr 10.0.20.0/24
 ```
 
 ## Discovery
@@ -43,6 +43,11 @@ snaffpy -d corp.local -u svc_scan -k --kdcHost 10.0.0.10 --cidr 10.0.20.0/24
 `--ldap` queries Active Directory for enabled computer objects and resolves their
 DNS host names. It can be combined with `--cidr` and `--targets`. A successful LDAP
 bind also validates the credentials before any SMB logon is attempted.
+
+Point the LDAP and Kerberos traffic at a specific domain controller with `--dc-ip`
+(its IP, used for the LDAP bind and, on its own, as the KDC) and/or `--dc-host` (its
+FQDN, used as the Kerberos KDC since SPNs need a name). When both are given, LDAP uses
+the IP and Kerberos uses the FQDN; with neither, the domain name is resolved instead.
 
 ## Rules
 
@@ -62,7 +67,7 @@ to map each hit to the groups that grant access and flag the ones your account h
 
 ```
 snaffpy-accesspaths loot.jsonl -d corp.local -u svc_scan -p 'Passw0rd!' \
-  --kdcHost 10.0.0.10 --min-triage Red --expand
+  --dc-ip 10.0.0.10 --min-triage Red --expand
 ```
 
 ## Account safety
@@ -75,6 +80,8 @@ stops the scan.
 ## Options
 
 ```
+--dc-ip IP             Domain controller IP for LDAP discovery (and KDC unless --dc-host set)
+--dc-host FQDN         Domain controller FQDN, used as the Kerberos KDC
 --interest LEVEL       Minimum triage to report: Black, Red, Yellow, Green
 --share-allow GLOB     Only scan matching shares (repeatable)
 --admin-shares         Include C$, ADMIN$ and other hidden shares
