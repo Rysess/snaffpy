@@ -1,0 +1,308 @@
+[
+  {
+    "name": "discard-shares",
+    "scope": "share",
+    "location": "sharename",
+    "match": "exact",
+    "words": [
+      "ipc$",
+      "print$"
+    ],
+    "triage": "Green",
+    "action": "discard"
+  },
+  {
+    "name": "discard-dirs",
+    "scope": "directory",
+    "location": "filepath",
+    "match": "contains",
+    "words": [
+      "\\winsxs",
+      "\\syswow64",
+      "\\systemapps",
+      "\\servicing",
+      "\\windows\\immersivecontrolpanel",
+      "\\windows\\diagnostics",
+      "\\windows\\debug",
+      "\\node_modules",
+      "\\wsuscontent",
+      "\\assembly\\gac",
+      "\\windows\\assembly",
+      "\\microsoft.net\\framework",
+      "\\reference assemblies\\microsoft\\framework",
+      "\\dotnet\\shared",
+      "\\dotnet\\sdk",
+      "\\windowspowershell\\modules",
+      "\\chocolatey\\helpers",
+      "\\sources\\sxs",
+      "\\lib\\ruby",
+      "\\site-packages",
+      "\\vendor\\bundle",
+      "\\vendor\\cache",
+      "\\appdata\\local\\microsoft",
+      "\\appdata\\roaming\\microsoft\\windows",
+      "\\locale",
+      "\\localization"
+    ],
+    "triage": "Green",
+    "action": "discard"
+  },
+  {
+    "name": "file-name-black",
+    "scope": "file",
+    "location": "filename",
+    "match": "exact",
+    "words": [
+      "id_rsa",
+      "id_dsa",
+      "id_ecdsa",
+      "id_ed25519",
+      "ntds.dit",
+      "shadow",
+      "sam",
+      "system",
+      "security",
+      "unattend.xml",
+      "autounattend.xml",
+      "sysprep.inf",
+      "groups.xml",
+      "scheduledtasks.xml",
+      "services.xml",
+      "printers.xml",
+      "drives.xml",
+      "datasources.xml",
+      ".netrc",
+      ".pgpass",
+      "shadow.bak"
+    ],
+    "triage": "Black",
+    "action": "snaffle"
+  },
+  {
+    "name": "file-ext-black",
+    "scope": "file",
+    "location": "fileext",
+    "match": "exact",
+    "words": [
+      ".kdbx",
+      ".kdb",
+      ".ppk",
+      ".pfx",
+      ".p12",
+      ".keychain",
+      ".ovpn",
+      ".jks",
+      ".psafe3",
+      ".mdf",
+      ".sqldump",
+      ".rdg"
+    ],
+    "triage": "Black",
+    "action": "snaffle"
+  },
+  {
+    "name": "file-name-ends-black",
+    "scope": "file",
+    "location": "filename",
+    "match": "endswith",
+    "words": [
+      "_rsa",
+      "_dsa",
+      "_ed25519",
+      "_ecdsa",
+      ".npmrc",
+      ".dockercfg"
+    ],
+    "triage": "Black",
+    "action": "snaffle"
+  },
+  {
+    "name": "file-name-red",
+    "scope": "file",
+    "location": "filename",
+    "match": "exact",
+    "words": [
+      "applicationhost.config",
+      ".env",
+      "config.php",
+      "wp-config.php",
+      "local.settings.json",
+      "tnsnames.ora",
+      ".bash_history",
+      ".zsh_history",
+      ".mysql_history",
+      "credentials",
+      "passwords.txt",
+      "pass.txt",
+      "secrets.txt",
+      "passwords.xlsx",
+      "passwords.docx",
+      "passwords.csv"
+    ],
+    "triage": "Red",
+    "action": "snaffle"
+  },
+  {
+    "name": "file-ext-red",
+    "scope": "file",
+    "location": "fileext",
+    "match": "exact",
+    "words": [
+      ".pem",
+      ".key",
+      ".der",
+      ".kirbi",
+      ".ccache",
+      ".rdp",
+      ".vnc",
+      ".cscfg",
+      ".vmdk",
+      ".vhd",
+      ".vhdx",
+      ".ovf",
+      ".sql",
+      ".dmp"
+    ],
+    "triage": "Red",
+    "action": "snaffle"
+  },
+  {
+    "name": "grep-ext",
+    "scope": "content",
+    "location": "fileext",
+    "match": "exact",
+    "words": [
+      ".config",
+      ".ini",
+      ".inf",
+      ".xml",
+      ".yml",
+      ".yaml",
+      ".json",
+      ".ps1",
+      ".psm1",
+      ".psd1",
+      ".bat",
+      ".cmd",
+      ".vbs",
+      ".sh",
+      ".php",
+      ".py",
+      ".rb",
+      ".java",
+      ".cs",
+      ".sql",
+      ".properties",
+      ".conf",
+      ".cnf",
+      ".env",
+      ".tf",
+      ".tfvars",
+      ".pl",
+      ".cfg",
+      ".ovpn",
+      ".txt"
+    ],
+    "triage": "Green",
+    "action": "grep"
+  },
+  {
+    "name": "content-private-key",
+    "scope": "content",
+    "location": "content",
+    "match": "regex",
+    "words": [
+      "-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY-----"
+    ],
+    "triage": "Black",
+    "action": "snaffle"
+  },
+  {
+    "name": "content-putty-key",
+    "scope": "content",
+    "location": "content",
+    "match": "regex",
+    "words": [
+      "PuTTY-User-Key-File-\\d"
+    ],
+    "triage": "Black",
+    "action": "snaffle"
+  },
+  {
+    "name": "content-gpp-cpassword",
+    "scope": "content",
+    "location": "content",
+    "match": "regex",
+    "words": [
+      "cpassword\\s*=\\s*\"[^\"]+\""
+    ],
+    "triage": "Black",
+    "action": "snaffle"
+  },
+  {
+    "name": "content-aws-secret",
+    "scope": "content",
+    "location": "content",
+    "match": "regex",
+    "words": [
+      "aws_secret_access_key\\s*=\\s*[\\'\"]?[A-Za-z0-9/+=]{40}"
+    ],
+    "triage": "Black",
+    "action": "snaffle"
+  },
+  {
+    "name": "content-aws-akid",
+    "scope": "content",
+    "location": "content",
+    "match": "regex",
+    "words": [
+      "\\b(?:AKIA|ASIA)[0-9A-Z]{16}\\b"
+    ],
+    "triage": "Red",
+    "action": "snaffle"
+  },
+  {
+    "name": "content-slack-token",
+    "scope": "content",
+    "location": "content",
+    "match": "regex",
+    "words": [
+      "xox[baprs]-[0-9]{10,}-[0-9A-Za-z-]{10,}"
+    ],
+    "triage": "Red",
+    "action": "snaffle"
+  },
+  {
+    "name": "content-connstring",
+    "scope": "content",
+    "location": "content",
+    "match": "regex",
+    "words": [
+      "(?:Data Source|Initial Catalog)=.{0,120}?(?:Password|Pwd)\\s*=\\s*[^\\s;]+"
+    ],
+    "triage": "Red",
+    "action": "snaffle"
+  },
+  {
+    "name": "content-generic-pw",
+    "scope": "content",
+    "location": "content",
+    "match": "regex",
+    "words": [
+      "(?:password|passwd|pwd|secret|api[_-]?key)\\s*[=:]\\s*[\\'\"][^\\'\"\\s]{4,64}"
+    ],
+    "triage": "Yellow",
+    "action": "snaffle"
+  },
+  {
+    "name": "content-xml-secret",
+    "scope": "content",
+    "location": "content",
+    "match": "regex",
+    "words": [
+      "<(?:password|connectionString|apiKey)>[^<]{4,}</"
+    ],
+    "triage": "Yellow",
+    "action": "snaffle"
+  }
+]

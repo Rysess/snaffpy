@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "snaffpy"
+version = "1.0.0"
+description = "Snaffler, ported to Linux: SMB share sensitive-file triage."
+requires-python = ">=3.9"
+dependencies = ["impacket"]
+
+[project.scripts]
+snaffpy = "snaffpy.__main__:main"
+snaffpy-accesspaths = "snaffpy.accesspaths:main"
+
+[tool.setuptools.packages.find]
+include = ["snaffpy*"]
+
+[tool.setuptools.package-data]
+"snaffpy.rules" = ["*.json"]
