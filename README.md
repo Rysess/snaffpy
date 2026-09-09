@@ -98,3 +98,7 @@ that matter.
 
 - Python 3.9+
 - impacket
+
+## Credits
+
+The one and only Snaffler https://github.com/SnaffCon/Snaffler
