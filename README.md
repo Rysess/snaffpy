@@ -89,12 +89,13 @@ stops the scan.
 
 ## Notes
 
-Content reading is the loud part: it opens file bodies and will trip canary or
-honeytoken files on first read. On engagements where that matters, run a name and
-extension pass first with `--no-content`, then a targeted content pass on the shares
-that matter.
+As specified by the original snaffler repo, this collection is noisy. The tool will connect to each server and to each share.
 
 ## Requirements
 
 - Python 3.9+
 - impacket
+
+## Credits
+
+The one and only Snaffler https://github.com/SnaffCon/Snaffler

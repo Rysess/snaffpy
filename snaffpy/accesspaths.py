@@ -49,7 +49,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--hashes", metavar="[LMHASH:]NTHASH")
     parser.add_argument("--aes-key", dest="aes_key")
     parser.add_argument("-k", "--kerberos", action="store_true")
-    parser.add_argument("--kdcHost")
+    parser.add_argument("--dc-ip", dest="dc_ip", metavar="IP",
+                        help="IP of the domain controller for LDAP (and KDC unless --dc-host given).")
+    parser.add_argument("--dc-host", dest="dc_host", metavar="FQDN",
+                        help="FQDN of the domain controller; used as the Kerberos KDC.")
     parser.add_argument("--no-colors", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("--debug", action="store_true")
@@ -62,7 +65,7 @@ def main():
     credentials = Credentials(
         domain=options.domain, username=options.user, password=options.password,
         hashes=options.hashes, use_kerberos=options.kerberos,
-        aesKey=options.aes_key, kdcHost=options.kdcHost)
+        aesKey=options.aes_key, dc_ip=options.dc_ip, dc_host=options.dc_host)
     logger = Logger(config)
 
     findings = load_findings(options.findings, options.min_triage)

@@ -14,7 +14,7 @@ from snaffpy.types.Credentials import Credentials
 from snaffpy.types.Rule import Triage
 
 BANNER = r"""
-                 __  __
+                     ________
    _________  ____ _/ __/ __/___  __  __
   / ___/ __ \/ __ `/ /_/ /_/ __ \/ / / /
  (__  ) / / / /_/ / __/ __/ /_/ / /_/ /
@@ -63,13 +63,18 @@ def build_argument_parser() -> argparse.ArgumentParser:
     group_auth = parser.add_argument_group("Authentication & Connection")
     group_auth.add_argument("-d", "--domain", default="", help="Authentication domain.")
     group_auth.add_argument("-u", "--user", default="", help="Username for authentication.")
+    group_auth.add_argument("--dc-ip", dest="dc_ip", metavar="IP",
+                            help="IP address of the domain controller to use for LDAP discovery "
+                                 "(and as the KDC unless --dc-host is given).")
+    group_auth.add_argument("--dc-host", dest="dc_host", metavar="FQDN",
+                            help="Hostname/FQDN of the domain controller; used as the Kerberos KDC "
+                                 "(SPNs need a name, not an IP).")
 
     group_secrets = parser.add_argument_group("Secrets")
     group_secrets.add_argument("-p", "--password", default="", help="Password.")
     group_secrets.add_argument("--hashes", metavar="[LMHASH:]NTHASH", help="NT/LM hashes.")
     group_secrets.add_argument("--aes-key", dest="aes_key", help="AES key for Kerberos.")
     group_secrets.add_argument("-k", "--kerberos", action="store_true", help="Use Kerberos authentication.")
-    group_secrets.add_argument("--kdcHost", help="FQDN/IP of the KDC (also used for LDAP).")
 
     return parser
 
@@ -95,7 +100,7 @@ def main():
     credentials = Credentials(
         domain=options.domain, username=options.user, password=options.password,
         hashes=options.hashes, use_kerberos=options.kerberos,
-        aesKey=options.aes_key, kdcHost=options.kdcHost,
+        aesKey=options.aes_key, dc_ip=options.dc_ip, dc_host=options.dc_host,
     )
     logger = Logger(config)
 

@@ -38,7 +38,7 @@ class ADAccess(object):
 
     def connect(self) -> "ADAccess":
         from snaffpy.core.Discovery import DiscoveryAuthError, _classify_ldap_error
-        server = self.credentials.kdcHost or self.credentials.domain
+        server = self.credentials.ldap_server
         identity = "%s\\%s" % (self.credentials.domain or ".", self.credentials.username or "(null)")
         try:
             self.conn = ldap.LDAPConnection("ldap://%s" % server, self.base_dn,

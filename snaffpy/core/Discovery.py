@@ -60,7 +60,7 @@ def discover_hosts_ldap(credentials: Credentials, base_dn: Optional[str] = None,
 
     if base_dn is None:
         base_dn = ",".join("DC=%s" % part for part in credentials.domain.split("."))
-    server = credentials.kdcHost or credentials.domain
+    server = credentials.ldap_server
     identity = "%s\\%s" % (credentials.domain or ".", credentials.username or "(null)")
 
     try:

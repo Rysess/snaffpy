@@ -29,6 +29,8 @@ class Credentials(object):
     nt_hex: str
     use_kerberos: bool
     aesKey: Optional[str]
+    dc_ip: Optional[str]
+    dc_host: Optional[str]
     kdcHost: Optional[str]
 
     def __init__(
@@ -39,7 +41,8 @@ class Credentials(object):
         hashes: Optional[str] = None,
         use_kerberos: bool = False,
         aesKey: Optional[str] = None,
-        kdcHost: Optional[str] = None,
+        dc_ip: Optional[str] = None,
+        dc_host: Optional[str] = None,
     ):
         super(Credentials, self).__init__()
         self.domain = domain
@@ -48,7 +51,15 @@ class Credentials(object):
         self.lm_hex, self.nt_hex = parse_lm_nt_hashes(hashes)
         self.use_kerberos = use_kerberos or (aesKey is not None)
         self.aesKey = aesKey
-        self.kdcHost = kdcHost
+        self.dc_ip = dc_ip
+        self.dc_host = dc_host
+        # The KDC needs a name for SPNs, so prefer the FQDN, then fall back to the IP.
+        self.kdcHost = dc_host or dc_ip
+
+    @property
+    def ldap_server(self) -> str:
+        """Host to direct LDAP discovery/enrichment at: DC IP, then FQDN, then domain."""
+        return self.dc_ip or self.dc_host or self.domain
 
     @property
     def has_hashes(self) -> bool:
