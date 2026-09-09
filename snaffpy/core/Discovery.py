@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from ipaddress import ip_network
 from typing import TYPE_CHECKING
 
@@ -39,15 +38,6 @@ def _classify_ldap_error(err: Exception) -> tuple[str, bool]:
         if ("data %s" % code) in text.lower():
             return meaning, code == "775"
     return text, False
-
-
-def _referral_target(err: Exception) -> "Optional[str]":
-    """The domain an LDAP referral (0x202B) points at -- a strong 'wrong domain' signal."""
-    text = clean_error(err)
-    if "0000202b" not in text.lower() and "referral" not in text.lower():
-        return None
-    match = re.search(r"ref\s*\d*:\s*'([^']+)'", text)
-    return match.group(1) if match else ""
 
 
 def expand_targets(cidrs: list, files: list, logger: Optional[Logger] = None) -> list[str]:
@@ -112,21 +102,13 @@ def discover_hosts_ldap(credentials: Credentials, base_dn: Optional[str] = None,
         conn.search(searchFilter=search_filter, attributes=["dNSHostName"],
                     sizeLimit=0, perRecordCallback=collect)
     except Exception as err:
-        referral = _referral_target(err)
         meaning, _ = _classify_ldap_error(err)
         if hosts:
             if logger is not None:
                 logger.warn("LDAP search stopped early (%s); continuing with the %d host(s) "
                             "already retrieved" % (meaning, len(set(hosts))))
-        elif logger is not None and referral is not None:
-            logger.error("Logon succeeded, but the domain '%s' does not exist on this DC."
-                         % credentials.domain)
-            hint = ""
-            if referral and referral.lower() != (credentials.domain or "").lower():
-                hint = " (the DC points at '%s')" % referral
-            logger.error("The credentials are fine -- -d/--domain is wrong. Set it to the DC's real "
-                         "domain%s, or pass --base-dn." % hint)
-        elif logger is not None:
-            logger.error("LDAP search returned no hosts: %s" % meaning)
-            logger.error("If the base DN is wrong for this domain, set it explicitly with --base-dn.")
+        else:
+            if logger is not None:
+                logger.error("Could not login: incorrect credentials or wrong domain.")
+            raise DiscoveryAuthError("LDAP search failed: incorrect credentials or wrong domain")
     return sorted(set(hosts))
