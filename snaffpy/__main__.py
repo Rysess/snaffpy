@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 
 from snaffpy import __version__
@@ -86,7 +87,8 @@ def main():
 
     if options.dump_rules:
         dump_rules(options.dump_rules)
-        print("[+] wrote default rules -> %s" % options.dump_rules)
+        print("[info] Wrote the default rules to '%s'. Edit it and pass it back with --rules."
+              % options.dump_rules)
         return
 
     config = Config(
@@ -97,35 +99,64 @@ def main():
         no_colors=options.no_colors, debug=options.debug, verbose=options.verbose,
         outfile=options.outfile,
     )
-    credentials = Credentials(
-        domain=options.domain, username=options.user, password=options.password,
-        hashes=options.hashes, use_kerberos=options.kerberos,
-        aesKey=options.aes_key, dc_ip=options.dc_ip, dc_host=options.dc_host,
-    )
-    logger = Logger(config)
+    try:
+        logger = Logger(config)
+    except OSError as err:
+        print("[error] Cannot open output file '%s': %s" % (options.outfile, err), file=sys.stderr)
+        sys.exit(2)
+
+    try:
+        credentials = Credentials(
+            domain=options.domain, username=options.user, password=options.password,
+            hashes=options.hashes, use_kerberos=options.kerberos,
+            aesKey=options.aes_key, dc_ip=options.dc_ip, dc_host=options.dc_host,
+        )
+    except ValueError as err:
+        logger.error("Invalid credentials: %s" % err)
+        sys.exit(2)
 
     if options.rules:
-        rules = load_rules(options.rules)
-        logger.verbose("loaded %d rule(s) from %s" % (len(rules), options.rules))
+        try:
+            rules = load_rules(options.rules)
+        except FileNotFoundError:
+            logger.error("Rules file not found: %s" % options.rules)
+            sys.exit(2)
+        except (ValueError, re.error) as err:
+            logger.error("Rules file %s is not valid: %s" % (options.rules, err))
+            sys.exit(2)
+        except (TypeError, KeyError) as err:
+            logger.error("A rule in %s is missing a required field or has an invalid one: %s"
+                         % (options.rules, err))
+            sys.exit(2)
+        logger.verbose("Loaded %d rule(s) from %s" % (len(rules), options.rules))
     else:
-        logger.verbose("rules install path: %s" % packaged_rules_path())
+        logger.verbose("Default rules path: %s" % packaged_rules_path())
         rules = load_default_rules(logger)
     engine = RuleEngine(rules, config.interest)
 
     snaffler = Snaffler(credentials, config, engine, logger)
 
-    targets = expand_targets(options.cidr, options.targets)
+    try:
+        targets = expand_targets(options.cidr, options.targets, logger=logger)
+    except OSError as err:
+        logger.error("Cannot read a --targets file: %s" % err)
+        sys.exit(2)
     if options.ldap:
-        logger.info("LDAP host discovery (T1018)")
+        logger.info("Discovering hosts from Active Directory over LDAP (MITRE T1018)")
         try:
             discovered = discover_hosts_ldap(credentials, options.base_dn, logger=logger)
         except DiscoveryAuthError:
             sys.exit(2)
         targets = sorted(set(targets) | set(discovered))
         snaffler.creds_validated = True
-        logger.info("discovered %d host(s) via LDAP" % len(discovered))
+        logger.info("Discovered %d host(s) via LDAP" % len(discovered))
+
     if not targets:
-        parser.error("no targets: use --ldap, --cidr, and/or --targets")
+        if options.ldap or options.cidr or options.targets:
+            logger.error("No hosts to scan: the targets you provided resolved to an empty list "
+                         "(see any errors above).")
+            sys.exit(2)
+        parser.error("no targets to scan -- provide hosts with --ldap, --cidr, and/or --targets")
 
     snaffler.run(targets)
 

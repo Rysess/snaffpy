@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -7,16 +8,23 @@ if TYPE_CHECKING:
 
 
 def parse_lm_nt_hashes(hashes: Optional[str]) -> tuple[str, str]:
-    """Split a '[LM]:NT' string into (lm_hex, nt_hex), padding empties with zeros."""
+    """Split a '[LM]:NT' string into (lm_hex, nt_hex), padding empties with zeros.
+
+    Raises ValueError on a value that is not 32 hex characters, so a typo'd hash fails
+    with a clear message instead of a cryptic impacket error deep in the logon.
+    """
     if not hashes:
         return "", ""
     if ":" in hashes:
         lm, nt = hashes.split(":", 1)
     else:
         lm, nt = "", hashes
-    lm = lm.strip() or ("0" * 32)
-    nt = nt.strip() or ("0" * 32)
-    return lm, nt
+    lm, nt = lm.strip(), nt.strip()
+    for label, value in (("LM", lm), ("NT", nt)):
+        if value and not re.fullmatch(r"[0-9a-fA-F]{32}", value):
+            raise ValueError("%s hash must be 32 hex characters (got '%s'); expected format "
+                             "'[LMHASH]:NTHASH'" % (label, value))
+    return lm or ("0" * 32), nt or ("0" * 32)
 
 
 class Credentials(object):

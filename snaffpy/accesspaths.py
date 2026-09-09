@@ -9,6 +9,7 @@ from snaffpy.core.ADAccess import ADAccess
 from snaffpy.core.AclResolver import AclResolver
 from snaffpy.core.Discovery import DiscoveryAuthError
 from snaffpy.core.Logger import Logger
+from snaffpy.core.ntstatus import describe_status
 from snaffpy.core.SMBSession import SMBSession
 from snaffpy.types.Config import Config
 from snaffpy.types.Credentials import Credentials
@@ -80,12 +81,14 @@ def main():
         try:
             ad = ADAccess(credentials, options.base_dn).connect()
         except DiscoveryAuthError as err:
-            logger.error(str(err))
             if err.locked:
-                logger.error("account is LOCKED OUT -- stop and coordinate before retrying")
+                logger.critical(str(err))
+                logger.error("Account is locked out. Stop and coordinate before retrying.")
+            else:
+                logger.error(str(err))
             sys.exit(2)
         token = ad.token_group_sids(options.whoami or options.user)
-        logger.info("account holds %d group SID(s)" % len(token))
+        logger.info("Account holds %d group SID(s)" % len(token))
 
     by_host = defaultdict(list)
     for rec in findings:
@@ -94,7 +97,12 @@ def main():
     for host, records in by_host.items():
         session = SMBSession(host, credentials, config, logger)
         if not session.init_smb_session():
-            logger.error("%s: session failed, skipping" % host)
+            if session.connected and session.error_code is not None:
+                logger.error("%s: could not authenticate (%s), skipping its findings"
+                             % (host, describe_status(session.error_code)))
+            else:
+                logger.error("%s: could not connect on tcp/%d, skipping its findings"
+                             % (host, config.port))
             continue
         resolver = AclResolver(session, logger)
         try:

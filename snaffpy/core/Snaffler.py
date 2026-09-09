@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from snaffpy.core.AclResolver import AclResolver
 from snaffpy.core.SMBSession import SMBSession
-from snaffpy.core.ntstatus import is_auth_failure, is_lockout, status_name
+from snaffpy.core.ntstatus import clean_error, describe_status, is_auth_failure, is_lockout
 
 if TYPE_CHECKING:
     from snaffpy.core.Logger import Logger
@@ -37,15 +37,15 @@ class Snaffler(object):
         start = time.time()
         if not self.creds_validated and not self.__preflight(targets):
             return
-        self.logger.info("snaffling %d host(s) with %d threads"
+        self.logger.info("Snaffling %d host(s) with %d thread(s)"
                          % (len(targets), self.config.threads))
         with ThreadPoolExecutor(max_workers=self.config.threads) as pool:
             futures = [pool.submit(self.__process_host, host) for host in targets]
             for _ in as_completed(futures):
                 pass
         if self.__abort.is_set():
-            self.logger.error("run aborted early to protect the account")
-        self.logger.info("done: %d shares, %d files seen, %d read, %.1fs"
+            self.logger.error("Run aborted early to protect the account from lockout.")
+        self.logger.info("Done: %d share(s) scanned, %d file(s) seen, %d read, %.1fs elapsed"
                          % (self.stats["shares"], self.stats["files"],
                             self.stats["reads"], time.time() - start))
 
@@ -57,29 +57,40 @@ class Snaffler(object):
         """
         creds = self.credentials
         identity = "%s\\%s" % (creds.domain or ".", creds.username or "(null)")
-        self.logger.verbose("preflight: validating %s before touching %d host(s)"
+        self.logger.verbose("Validating %s against a live host before scanning %d target(s)"
                             % (identity, len(targets)))
         for host in targets:
             session = SMBSession(host, creds, self.config, self.logger)
             ok = session.init_smb_session()
             session.close()
             if ok:
-                self.logger.info("preflight OK: %s validated on %s" % (identity, host))
+                self.logger.info("Credentials for '%s' validated on %s" % (identity, host))
                 return True
             if not session.connected:
                 continue
             code = session.error_code
             if is_lockout(code):
-                self.logger.error("preflight ABORT: %s is LOCKED OUT on %s (%s)"
-                                  % (identity, host, status_name(code)))
+                self.logger.critical("Account '%s' is locked out on %s: %s"
+                                     % (identity, host, describe_status(code)))
+                self.logger.error("Stopping now. Do not retry until the lockout is cleared.")
                 return False
             if is_auth_failure(code):
-                self.logger.error(
-                    "preflight ABORT: %s rejected on %s (%s) -- stopping before "
-                    "more failed logons lock the account" % (identity, host, status_name(code)))
+                self.logger.error("Authentication failed for '%s' on %s: %s"
+                                  % (identity, host, describe_status(code)))
+                self.logger.error("Aborting run so repeated failed logons cannot lock the account.")
                 return False
-            self.logger.verbose("%s: non-auth error on connect, trying next host" % host)
-        self.logger.error("preflight: no target was reachable on tcp/%d" % self.config.port)
+            if code is None and session.error is not None:
+                # Reached the host but the logon itself failed (bad hash format, Kerberos/KDC
+                # problem, etc.). This is a config issue that will repeat on every host.
+                self.logger.error("Could not log on to %s as '%s': %s"
+                                  % (host, identity, clean_error(session.error)))
+                self.logger.error("This is a credential/Kerberos configuration problem, not host "
+                                  "reachability -- check -p/--hashes/-k/--dc-host and try again.")
+                return False
+            self.logger.verbose("%s: reachable but returned a non-auth error, trying the next host"
+                                % host)
+        self.logger.error("No target answered on tcp/%d. Check connectivity, the port, and the "
+                          "target list (--cidr / --targets / --ldap)." % self.config.port)
         return False
 
     def __bump(self, key: str):
@@ -94,12 +105,14 @@ class Snaffler(object):
             if session.connected and session.error_code is not None:
                 if is_lockout(session.error_code):
                     self.__abort.set()
-                    self.logger.error("%s: ACCOUNT LOCKED OUT (%s) -- aborting run"
-                                      % (host, status_name(session.error_code)))
+                    self.logger.critical("%s: account locked out mid-run: %s -- aborting the whole run"
+                                         % (host, describe_status(session.error_code)))
                 elif is_auth_failure(session.error_code):
                     self.__bump("auth_fail")
-                    self.logger.error("%s: auth failed (%s)"
-                                      % (host, status_name(session.error_code)))
+                    self.logger.error("%s: authentication failed: %s"
+                                      % (host, describe_status(session.error_code)))
+            elif session.connected and session.error is not None:
+                self.logger.error("%s: could not log on: %s" % (host, clean_error(session.error)))
             return
         resolver = AclResolver(session, self.logger) if self.config.acls else None
         try:

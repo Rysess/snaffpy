@@ -41,28 +41,31 @@ class Logger(object):
         with self.__lock:
             print(clean if self.config.no_colors else message, end=end)
 
+    def info(self, message: str):
+        self.print("[\x1b[1;94minfo\x1b[0m] %s" % message)
+
+    def warn(self, message: str):
+        self.print("[\x1b[1;93mwarning\x1b[0m] %s" % message)
+
+    def error(self, message: str):
+        self.print("[\x1b[1;91merror\x1b[0m] %s" % message)
+
+    def critical(self, message: str):
+        self.print("[\x1b[1;97;41mcritical\x1b[0m] %s" % message)
+
     def debug(self, message: str):
         if self.config.debug:
-            self.print("\x1b[90m[debug] %s\x1b[0m" % message)
+            self.print("[\x1b[90mdebug\x1b[0m] %s" % message)
 
     def verbose(self, message: str):
         if self.config.verbose or self.config.debug:
-            self.print("\x1b[90m[.] %s\x1b[0m" % message)
-
-    def warn(self, message: str):
-        self.print("\x1b[93m[!]\x1b[0m %s" % message)
+            self.print("[\x1b[90mdebug\x1b[0m] %s" % message)
 
     def exception(self, message: str, err: Exception):
         self.error("%s: %s" % (message, err))
         if self.config.debug:
             import traceback
             self.print("\x1b[90m%s\x1b[0m" % traceback.format_exc().rstrip())
-
-    def info(self, message: str):
-        self.print("\x1b[94m[*]\x1b[0m %s" % message)
-
-    def error(self, message: str):
-        self.print("\x1b[91m[!]\x1b[0m %s" % message)
 
     def finding(self, host: str, share: str, path: str, size: int,
                 triage: str, rule: str, snippet: str = ""):

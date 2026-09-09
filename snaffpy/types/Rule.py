@@ -29,6 +29,13 @@ class Scope(object):
     CONTENT = "content"
 
 
+VALID_SCOPES = {"share", "directory", "file", "content"}
+VALID_MATCHES = {"exact", "endswith", "startswith", "contains", "regex"}
+VALID_LOCATIONS = {"sharename", "filepath", "filename", "fileext", "content"}
+VALID_ACTIONS = {"snaffle", "discard", "grep"}
+VALID_TRIAGES = set(Triage.ORDER)
+
+
 class Rule(object):
     """A single classifier rule applied at one stage of the snaffle pipeline."""
 
@@ -59,7 +66,20 @@ class Rule(object):
         self.triage = triage
         self.action = action
         self.__compiled = None
+        self.validate()
         self.compile()
+
+    def validate(self) -> None:
+        for value, allowed, field in (
+            (self.scope, VALID_SCOPES, "scope"),
+            (self.match, VALID_MATCHES, "match"),
+            (self.location, VALID_LOCATIONS, "location"),
+            (self.triage, VALID_TRIAGES, "triage"),
+            (self.action, VALID_ACTIONS, "action"),
+        ):
+            if value not in allowed:
+                raise ValueError("rule '%s' has invalid %s '%s' (expected one of: %s)"
+                                 % (self.name, field, value, ", ".join(sorted(allowed))))
 
     def compile(self) -> "Rule":
         if self.match == "regex":

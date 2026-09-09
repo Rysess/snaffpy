@@ -7,7 +7,7 @@ from impacket.smb3structs import (
     FILE_NON_DIRECTORY_FILE, FILE_OPEN, FILE_READ_DATA, FILE_SHARE_READ,
 )
 
-from snaffpy.core.ntstatus import status_name
+from snaffpy.core.ntstatus import clean_error, describe_status
 
 if TYPE_CHECKING:
     from typing import Optional
@@ -46,7 +46,8 @@ class SMBSession(object):
             self.connected = True
         except Exception as err:
             self.error, self.error_code, self.connected = err, None, False
-            self.logger.verbose("%s: not reachable: %s" % (self.host, err))
+            self.logger.verbose("%s: could not connect on tcp/%d: %s"
+                                % (self.host, self.config.port, err))
             return False
 
         try:
@@ -66,12 +67,13 @@ class SMBSession(object):
         except SessionError as err:
             self.error = err
             self.error_code = err.getErrorCode()
-            self.logger.verbose("%s: login failed (%s)"
-                                % (self.host, status_name(self.error_code)))
+            self.logger.verbose("%s: logon rejected: %s"
+                                % (self.host, describe_status(self.error_code)))
             return False
         except Exception as err:
             self.error, self.error_code = err, None
-            self.logger.verbose("%s: login error: %s" % (self.host, err))
+            self.logger.verbose("%s: unexpected error during logon: %s"
+                                % (self.host, clean_error(err)))
             return False
 
     def list_shares(self) -> list[str]:
